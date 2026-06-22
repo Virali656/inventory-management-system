@@ -93,3 +93,26 @@ class DashboardSummary(BaseModel):
     total_customers: int
     total_orders: int
     low_stock_products: List[ProductResponse]
+
+# User/Auth Schemas
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6, max_length=100)
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

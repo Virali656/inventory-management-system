@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from typing import List
+from datetime import timedelta
 import models
 import schemas
+import auth
 from database import engine, get_db
 
 # Create database tables
@@ -21,10 +24,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+@app.post("/auth/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Register a new user"""
+    # Check if username exists
+    existing_user = db.query(models.User).filter(models.User.username == user.username).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered"
+        )
+
+    # Check if email exists
+    existing_email = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Create new user
+    hashed_password = auth.get_password_hash(user.password)
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.post("/auth/login", response_model=schemas.Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Login and get access token"""
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/auth/me", response_model=schemas.UserResponse)
+def get_me(current_user: models.User = Depends(auth.get_current_active_user)):
+    """Get current user info"""
+    return current_user
+
 # ==================== PRODUCT ENDPOINTS ====================
 
 @app.post("/products", response_model=schemas.ProductResponse, status_code=status.HTTP_201_CREATED)
-def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    product: schemas.ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
     """Create a new product"""
     # Check if SKU already exists
     existing_product = db.query(models.Product).filter(models.Product.sku == product.sku).first()
@@ -41,13 +106,13 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     return db_product
 
 @app.get("/products", response_model=List[schemas.ProductResponse])
-def get_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve all products"""
     products = db.query(models.Product).offset(skip).limit(limit).all()
     return products
 
 @app.get("/products/{product_id}", response_model=schemas.ProductResponse)
-def get_product(product_id: int, db: Session = Depends(get_db)):
+def get_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve a specific product by ID"""
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
@@ -58,7 +123,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     return product
 
 @app.put("/products/{product_id}", response_model=schemas.ProductResponse)
-def update_product(product_id: int, product_update: schemas.ProductUpdate, db: Session = Depends(get_db)):
+def update_product(product_id: int, product_update: schemas.ProductUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Update product details"""
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
@@ -88,7 +153,7 @@ def update_product(product_id: int, product_update: schemas.ProductUpdate, db: S
     return product
 
 @app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Delete a product"""
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
@@ -104,7 +169,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 # ==================== CUSTOMER ENDPOINTS ====================
 
 @app.post("/customers", response_model=schemas.CustomerResponse, status_code=status.HTTP_201_CREATED)
-def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Create a new customer"""
     # Check if email already exists
     existing_customer = db.query(models.Customer).filter(models.Customer.email == customer.email).first()
@@ -121,13 +186,13 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
     return db_customer
 
 @app.get("/customers", response_model=List[schemas.CustomerResponse])
-def get_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve all customers"""
     customers = db.query(models.Customer).offset(skip).limit(limit).all()
     return customers
 
 @app.get("/customers/{customer_id}", response_model=schemas.CustomerResponse)
-def get_customer(customer_id: int, db: Session = Depends(get_db)):
+def get_customer(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve customer details by ID"""
     customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
     if not customer:
@@ -138,7 +203,7 @@ def get_customer(customer_id: int, db: Session = Depends(get_db)):
     return customer
 
 @app.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_customer(customer_id: int, db: Session = Depends(get_db)):
+def delete_customer(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Delete a customer"""
     customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
     if not customer:
@@ -154,7 +219,7 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db)):
 # ==================== ORDER ENDPOINTS ====================
 
 @app.post("/orders", response_model=schemas.OrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
+def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Create a new order"""
     # Verify customer exists
     customer = db.query(models.Customer).filter(models.Customer.id == order.customer_id).first()
@@ -243,7 +308,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     return response
 
 @app.get("/orders", response_model=List[schemas.OrderResponse])
-def get_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve all orders"""
     orders = db.query(models.Order).offset(skip).limit(limit).all()
 
@@ -273,7 +338,7 @@ def get_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return result
 
 @app.get("/orders/{order_id}", response_model=schemas.OrderResponse)
-def get_order(order_id: int, db: Session = Depends(get_db)):
+def get_order(order_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Retrieve order details by ID"""
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
@@ -304,7 +369,7 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
     )
 
 @app.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_order(order_id: int, db: Session = Depends(get_db)):
+def delete_order(order_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Cancel/Delete an order"""
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
@@ -320,7 +385,7 @@ def delete_order(order_id: int, db: Session = Depends(get_db)):
 # ==================== DASHBOARD ENDPOINT ====================
 
 @app.get("/dashboard", response_model=schemas.DashboardSummary)
-def get_dashboard(db: Session = Depends(get_db)):
+def get_dashboard(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     """Get dashboard summary statistics"""
     total_products = db.query(func.count(models.Product.id)).scalar()
     total_customers = db.query(func.count(models.Customer.id)).scalar()
