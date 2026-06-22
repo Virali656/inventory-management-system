@@ -1,26 +1,17 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: inventory-db
+databases:
+  - name: inventory-db
+    databaseName: inventory_db
+    user: inventory_user
     plan: free
-    region: oregon
-    env: docker
-    dockerfilePath: ./Dockerfile.postgres
-    envVars:
-      - key: POSTGRES_USER
-        generateValue: true
-      - key: POSTGRES_PASSWORD
-        generateValue: true
-      - key: POSTGRES_DB
-        value: inventory_db
 
+services:
   # Backend API
   - type: web
     name: inventory-backend
-    runtime: docker
+    runtime: python
     plan: free
-    region: oregon
-    dockerfilePath: ./Dockerfile.backend
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: chmod +x ./init_db.sh && ./init_db.sh && cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -31,16 +22,20 @@ services:
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 30
+        value: 43200
     healthCheckPath: /health
 
   # Frontend
   - type: web
     name: inventory-frontend
-    runtime: docker
+    runtime: static
     plan: free
-    region: oregon
-    dockerfilePath: ./Dockerfile.frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: REACT_APP_API_URL
         fromService:

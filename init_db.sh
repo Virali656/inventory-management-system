@@ -1,0 +1,14 @@
+#!/bin/bash
+# Database initialization script for Render deployment
+
+cd backend
+
+# Create tables
+python3 << 'EOF'
+from database import engine
+from models import Base
+
+print("Creating database tables...")
+Base.metadata.create_all(bind=engine)
+print("Database tables created successfully!")
+EOF
