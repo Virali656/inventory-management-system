@@ -5,11 +5,15 @@ WORKDIR /app
 # Copy package files
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (need devDependencies for react-scripts build)
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ .
+
+# Set build-time environment variable
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Build the app
 RUN npm run build
