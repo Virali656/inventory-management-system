@@ -10,6 +10,44 @@ const api = axios.create({
   },
 });
 
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - redirect to login
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authApi = {
+  register: (username: string, email: string, password: string) =>
+    api.post('/auth/register', { username, email, password }),
+  login: (username: string, password: string) => {
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    return api.post('/auth/login', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+  },
+  getCurrentUser: () => api.get('/auth/me'),
+};
+
 // Product API
 export const productApi = {
   getAll: () => api.get<Product[]>('/products'),

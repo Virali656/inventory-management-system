@@ -1,34 +1,46 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import './Login.css';
+import './Login.css'; // Reuse login styles
 
-const Login: React.FC = () => {
+const Register: React.FC = () => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!username || !password) {
-      setError('Please enter both username and password');
+    if (!username || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      await register(username, email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Invalid username or password');
+      setError(err.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -47,8 +59,8 @@ const Login: React.FC = () => {
           <div className="login-logo">
             <span className="logo-icon">📦</span>
           </div>
-          <h1>Inventory Management System</h1>
-          <p>Sign in to access your dashboard</p>
+          <h1>Create Account</h1>
+          <p>Register to access the inventory system</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -68,9 +80,25 @@ const Login: React.FC = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Choose a username"
                 disabled={isLoading}
                 autoComplete="username"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <div className="input-wrapper">
+              <span className="input-icon">✉️</span>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                disabled={isLoading}
+                autoComplete="email"
               />
             </div>
           </div>
@@ -86,7 +114,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 disabled={isLoading}
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -99,6 +127,22 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <div className="input-wrapper">
+              <span className="input-icon">🔒</span>
+              <input
+                id="confirmPassword"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                disabled={isLoading}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             className="btn btn-primary btn-lg login-button"
@@ -107,17 +151,17 @@ const Login: React.FC = () => {
             {isLoading ? (
               <>
                 <span className="spinner"></span>
-                Signing in...
+                Creating account...
               </>
             ) : (
               <>
-                🔓 Sign In
+                ✨ Create Account
               </>
             )}
           </button>
 
           <div className="login-footer">
-            <p>Don't have an account? <Link to="/register">Register here</Link></p>
+            <p>Already have an account? <Link to="/login">Sign in here</Link></p>
           </div>
         </form>
       </div>
@@ -129,4 +173,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

@@ -6,6 +6,7 @@ import Products from './pages/Products';
 import Customers from './pages/Customers';
 import Orders from './pages/Orders';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import CustomerSignup from './pages/CustomerSignup';
 import './App.css';
 
@@ -43,9 +44,7 @@ const Navigation: React.FC = () => {
         </ul>
         <div className="navbar-right">
           <div className="user-info">
-            <span className="user-avatar">
-              {user?.role === 'admin' ? '👨‍💼' : '👤'}
-            </span>
+            <span className="user-avatar">👤</span>
             <span className="user-name">{user?.username}</span>
           </div>
           <button className="btn btn-secondary btn-sm logout-btn" onClick={logout}>
@@ -57,21 +56,29 @@ const Navigation: React.FC = () => {
   );
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+const AppContent: React.FC = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        fontSize: '1.5rem',
+        color: '#666'
+      }}>
+        <div>
+          <span className="spinner" style={{ marginRight: '10px' }}></span>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const AppContent: React.FC = () => {
-  const { isAuthenticated, login } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Login onLogin={login} />;
   }
 
   return (
@@ -79,10 +86,10 @@ const AppContent: React.FC = () => {
       <Navigation />
       <div className="container">
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-          <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -95,6 +102,8 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/signup" element={<CustomerSignup />} />
           <Route path="*" element={<AppContent />} />
         </Routes>
