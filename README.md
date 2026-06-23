@@ -80,10 +80,10 @@ docker-compose up -d --build
 
 ### 4. Access the Application
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- **Frontend**: https://inventory-frontend-w9yi.onrender.com
+- **Backend API**: https://inventory-management-system-kks6.onrender.com
+- **API Documentation**: https://inventory-management-system-kks6.onrender.com/docs
+- **Health Check**: https://inventory-management-system-kks6.onrender.com/health
 
 ### 5. Login Credentials
 
@@ -166,8 +166,8 @@ inventory-management-system/
 ## 📊 API Documentation
 
 Once the backend is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: https://inventory-management-system-kks6.onrender.com/docs
+- **ReDoc**: https://inventory-management-system-kks6.onrender.com/redoc
 
 ## 🔐 Business Logic
 
@@ -255,10 +255,10 @@ docker-compose down -v
 
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl https://inventory-management-system-kks6.onrender.com/health
 
 # Create a product
-curl -X POST http://localhost:8000/products \
+curl -X POST https://inventory-management-system-kks6.onrender.com/products \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Laptop",
@@ -268,28 +268,28 @@ curl -X POST http://localhost:8000/products \
   }'
 
 # Get all products
-curl http://localhost:8000/products
+curl https://inventory-management-system-kks6.onrender.com/products
 ```
 
 ### Using the Interactive API Docs
 
-Visit http://localhost:8000/docs to use the interactive Swagger UI for testing all endpoints.
+Visit https://inventory-management-system-kks6.onrender.com/docs to use the interactive Swagger UI for testing all endpoints.
 
 ## 📦 Docker Hub
 
-The backend image is available on Docker Hub:
+The backend image is available on Docker Hub: https://hub.docker.com/r/viralik473/inventory-backend
 
 ```bash
 # Pull the image
-docker pull <your-dockerhub-username>/inventory-backend:latest
+docker pull viralik473/inventory-backend:latest
 
 # Run the container
-docker run -p 8000:8000 <your-dockerhub-username>/inventory-backend:latest
+docker run -p 8000:8000 -e DATABASE_URL=postgresql://user:pass@host:5432/db viralik473/inventory-backend:latest
 ```
 
 ## 🌐 Deployment
 
-### Backend Deployment (Render/Railway/Fly.io)
+### Backend Deployment (Render)
 
 1. Create a new web service
 2. Connect your GitHub repository
@@ -297,7 +297,7 @@ docker run -p 8000:8000 <your-dockerhub-username>/inventory-backend:latest
    - `DATABASE_URL` - PostgreSQL connection string
 4. Deploy from main branch
 
-### Frontend Deployment (Vercel/Netlify)
+### Frontend Deployment (Render)
 
 1. Import project from GitHub
 2. Set build command: `npm run build`
@@ -310,9 +310,6 @@ docker run -p 8000:8000 <your-dockerhub-username>/inventory-backend:latest
 
 Use a managed PostgreSQL service:
 - **Render PostgreSQL**
-- **Railway PostgreSQL**
-- **Supabase**
-- **ElephantSQL**
 
 ## 🐛 Troubleshooting
 
