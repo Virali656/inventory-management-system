@@ -33,7 +33,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.username == user.username).first()
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Username already registered"
         )
 
@@ -41,7 +41,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     existing_email = db.query(models.User).filter(models.User.email == user.email).first()
     if existing_email:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered"
         )
 
@@ -95,7 +95,7 @@ def create_product(
     existing_product = db.query(models.Product).filter(models.Product.sku == product.sku).first()
     if existing_product:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Product with this SKU already exists"
         )
 
@@ -140,7 +140,7 @@ def update_product(product_id: int, product_update: schemas.ProductUpdate, db: S
         ).first()
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Product with this SKU already exists"
             )
 
@@ -175,7 +175,7 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
     existing_customer = db.query(models.Customer).filter(models.Customer.email == customer.email).first()
     if existing_customer:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Customer with this email already exists"
         )
 
